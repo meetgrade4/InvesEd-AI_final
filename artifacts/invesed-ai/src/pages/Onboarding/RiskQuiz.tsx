@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, ChevronRight, CheckCircle2, SkipForward } from 'lucide-react';
 import { calculateRiskScore } from '../../utils/riskScorer';
+import { useUser } from '../../context/UserContext';
+import type { RiskProfile } from '../../types';
 
 const QUESTIONS = [
   {
@@ -71,12 +73,27 @@ const CATEGORY_LABELS = ['Spending Habits', 'Spending Habits', 'Spending Habits'
 
 export default function RiskQuiz() {
   const [, navigate] = useLocation();
+  const { setRiskProfile } = useUser();
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
 
   const progress = ((current) / QUESTIONS.length) * 100;
   const question = QUESTIONS[current];
+
+  const handleSkip = () => {
+    const defaultProfile: RiskProfile = {
+      type: 'moderate',
+      label: 'Balanced Investor',
+      score: 55,
+      completedAt: Date.now(),
+      estimatedCapital: 0,
+      investmentGoal: 'both',
+      knowledgeLevel: 'none',
+    };
+    setRiskProfile(defaultProfile);
+    navigate('/academy');
+  };
 
   const handleSelect = (idx: number) => {
     setSelected(idx);
@@ -109,8 +126,17 @@ export default function RiskQuiz() {
             </div>
             <span className="font-bold text-primary text-sm">InvesEd AI</span>
           </div>
-          <div className="text-sm text-muted-foreground font-medium">
-            Question <span className="text-foreground font-bold">{current + 1}</span> of {QUESTIONS.length}
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-muted-foreground font-medium">
+              Question <span className="text-foreground font-bold">{current + 1}</span> of {QUESTIONS.length}
+            </div>
+            <button
+              onClick={handleSkip}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted"
+            >
+              <SkipForward className="w-3.5 h-3.5" />
+              Skip quiz
+            </button>
           </div>
         </div>
       </div>

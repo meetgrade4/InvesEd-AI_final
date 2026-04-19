@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
-import { TrendingUp, User, Mail, Lock, Eye, EyeOff, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, Mail, Lock, Eye, EyeOff, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useUser } from '../../context/UserContext';
+import type { RiskProfile } from '../../types';
 import toast from 'react-hot-toast';
 
 interface SignUpForm {
@@ -30,7 +31,7 @@ function getAge(dob: string): number {
 export default function SignUp() {
   const [, navigate] = useLocation();
   const { signUp, signInWithGoogle } = useAuth();
-  const { setUserProfile } = useUser();
+  const { setUserProfile, setRiskProfile } = useUser();
   const [step, setStep] = useState(1);
   const [selectedAvatar, setSelectedAvatar] = useState('🦁');
   const [showPassword, setShowPassword] = useState(false);
@@ -97,6 +98,21 @@ export default function SignUp() {
   const finishSignUp = () => {
     navigate('/onboarding/quiz');
     toast.success('Welcome to InvesEd AI! Let\'s find your investor profile.');
+  };
+
+  const handleSkipQuiz = () => {
+    const defaultProfile: RiskProfile = {
+      type: 'moderate',
+      label: 'Balanced Investor',
+      score: 55,
+      completedAt: Date.now(),
+      estimatedCapital: 0,
+      investmentGoal: 'both',
+      knowledgeLevel: 'none',
+    };
+    setRiskProfile(defaultProfile);
+    navigate('/academy');
+    toast.success('Welcome to InvesEd AI! You can retake the quiz anytime from your profile.');
   };
 
   const slideVariants = {
@@ -319,10 +335,10 @@ export default function SignUp() {
 
                 <div className="flex gap-3">
                   <button
-                    onClick={finishSignUp}
+                    onClick={handleSkipQuiz}
                     className="flex-1 py-3 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
                   >
-                    Skip for now
+                    Skip quiz
                   </button>
                   <motion.button
                     whileHover={{ scale: 1.01 }}
