@@ -110,6 +110,7 @@ interface UserContextType {
     sector?: string
   ) => boolean;
   sellInvestment: (ticker: string, quantity: number, price: number) => boolean;
+  markQuizComplete: (moduleId: string, xp: number) => void;
   researchHistory: ResearchView[];
   logResearchView: (ticker: string, name: string, type: 'stock' | 'fund') => void;
   activityLog: ActivityEntry[];
@@ -243,22 +244,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (prev.length === 0) {
         setTimeout(() => awardBadge('first_lesson'), 200);
       }
-      const updated = [...prev, lessonId];
-      const moduleLessons = MODULE_LESSON_MAP[moduleId]?.lessons ?? [];
-      const allDone = moduleLessons.length > 0 && moduleLessons.every(l => updated.includes(l));
-      if (allDone) {
-        setCompletedModules(cm => {
-          if (cm.includes(moduleId)) return cm;
-          const moduleXp = MODULE_LESSON_MAP[moduleId]?.xp ?? 0;
-          addXP(moduleXp);
-          if (cm.length === 0) {
-            setTimeout(() => awardBadge('module_master'), 200);
-          }
-          return [...cm, moduleId];
-        });
-      }
-      return updated;
+      return [...prev, lessonId];
     });
+  }, [addXP, awardBadge]);
+
+  const markQuizComplete = useCallback((moduleId: string, xp: number) => {
+    setCompletedModules(prev => {
+      if (prev.includes(moduleId)) return prev;
+      addXP(xp);
+      if (prev.length === 0) {
+        setTimeout(() => awardBadge('module_master'), 200);
+      }
+      return [...prev, moduleId];
+    });
+    setActivityLog(prev => [
+      { icon: '🏆', text: `Completed ${moduleId} Module Quiz (+${xp} XP)`, time: Date.now(), category: 'academy' as const },
+      ...prev,
+    ].slice(0, 30));
   }, [addXP, awardBadge]);
 
   const markRoundComplete = useCallback(() => {
@@ -376,6 +378,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       portfolioState,
       buyInvestment,
       sellInvestment,
+      markQuizComplete,
       researchHistory,
       logResearchView,
       activityLog,

@@ -151,10 +151,12 @@ export default function Profile() {
             <Crown className="w-5 h-5 text-amber-600" />
             <span className="font-bold text-amber-800">Upgrade to Pro</span>
           </div>
-          <p className="text-sm text-amber-700 mb-3">Unlock ₹10,00,000 virtual capital, advanced modules (AE1–AE4), and priority AI coaching.</p>
-          <button className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-sm transition-colors">
-            Upgrade Now
-          </button>
+          <p className="text-sm text-amber-700 mb-3">Unlock ₹10,00,000 virtual capital, advanced modules (AE1–AE4), Elite AI coaching, and achievement rewards.</p>
+          <Link href="/upgrade">
+            <button className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-sm transition-colors">
+              See What's in Pro →
+            </button>
+          </Link>
         </div>
       )}
     </div>

@@ -87,6 +87,7 @@ export default function ModuleView() {
 
   const isModuleDone = completedModules.includes(moduleId!);
   const doneLessons = mod.lessons.filter(l => completedLessons.includes(l.id));
+  const allLessonsDone = doneLessons.length === mod.lessons.length;
   const progressPct = (doneLessons.length / mod.lessons.length) * 100;
 
   return (
@@ -170,14 +171,42 @@ export default function ModuleView() {
       </div>
 
       <div className="mt-4">
-        <div className={`bg-white rounded-xl border border-border p-4 flex items-center gap-3 ${isModuleDone ? 'opacity-100 border-green-200' : 'opacity-60'}`}>
-          {isModuleDone ? <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" /> : <Lock className="w-5 h-5 text-muted-foreground flex-shrink-0" />}
-          <div className="flex-1">
-            <div className="font-semibold text-sm">{isModuleDone ? 'Module Quiz — Completed!' : 'Module Quiz'}</div>
-            <div className="text-xs text-muted-foreground">{isModuleDone ? 'All lessons done — well done!' : 'Complete all lessons to unlock'}</div>
+        {isModuleDone ? (
+          <Link href={`/academy/${moduleId}/quiz`}>
+            <div className="bg-green-50 rounded-xl border border-green-200 p-4 flex items-center gap-3 cursor-pointer hover:shadow-sm transition-shadow">
+              <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="font-semibold text-sm text-green-700">Module Quiz — Completed!</div>
+                <div className="text-xs text-green-600">Tap to retake or review questions</div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-green-400" />
+            </div>
+          </Link>
+        ) : allLessonsDone ? (
+          <Link href={`/academy/${moduleId}/quiz`}>
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              className="brand-gradient rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:opacity-95 transition-opacity shadow-md">
+              <Award className="w-5 h-5 text-white flex-shrink-0" />
+              <div className="flex-1">
+                <div className="font-bold text-sm text-white">Take the Module Quiz!</div>
+                <div className="text-xs text-white/80">All lessons done — complete the quiz to finish this module</div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-amber-200">+{Math.round(mod.xp * 0.5)} XP</span>
+                <ChevronRight className="w-4 h-4 text-white" />
+              </div>
+            </motion.div>
+          </Link>
+        ) : (
+          <div className="bg-white rounded-xl border border-border p-4 flex items-center gap-3 opacity-50 cursor-not-allowed">
+            <Lock className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+            <div className="flex-1">
+              <div className="font-semibold text-sm">Module Quiz</div>
+              <div className="text-xs text-muted-foreground">Complete all {mod.lessons.length} lessons to unlock ({doneLessons.length}/{mod.lessons.length} done)</div>
+            </div>
+            <span className="text-xs text-amber-600 font-medium">+{Math.round(mod.xp * 0.5)} XP</span>
           </div>
-          <span className="text-xs text-amber-600 font-medium">+{Math.round(mod.xp * 0.5)} XP</span>
-        </div>
+        )}
       </div>
     </div>
   );

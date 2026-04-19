@@ -14,6 +14,8 @@ import OnboardingResult from './pages/Onboarding/OnboardingResult';
 import AcademyHome from './pages/Academy/AcademyHome';
 import ModuleView from './pages/Academy/ModuleView';
 import LessonView from './pages/Academy/LessonView';
+import ModuleQuiz from './pages/Academy/ModuleQuiz';
+import UpgradePage from './pages/Upgrade/UpgradePage';
 import Portfolio from './pages/Simulator/Portfolio';
 import ResearchHome from './pages/Research/ResearchHome';
 import StockDetail from './pages/Research/StockDetail';
@@ -45,8 +47,10 @@ function AppRoutes() {
         <Route path="/onboarding/quiz" component={RiskQuiz} />
         <Route path="/onboarding/result" component={OnboardingResult} />
         <Route path="/academy" component={AcademyHome} />
+        <Route path="/academy/:moduleId/quiz" component={ModuleQuiz} />
         <Route path="/academy/:moduleId/lesson/:lessonId" component={LessonView} />
         <Route path="/academy/:moduleId" component={ModuleView} />
+        <Route path="/upgrade" component={UpgradePage} />
         <Route path="/portfolio" component={Portfolio} />
         <Route path="/dashboard" component={GuidedDashboard} />
         <Route path="/research/fund/:fundCode" component={() => <div className="max-w-2xl mx-auto px-4 py-8 text-center"><h2 className="text-xl font-bold">Fund detail coming soon</h2></div>} />
