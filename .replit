@@ -3,6 +3,8 @@ modules = ["nodejs-24"]
 [deployment]
 router = "application"
 deploymentTarget = "autoscale"
+build = ["sh", "-c", "cd artifacts/invesed-ai && pnpm install && pnpm run build"]
+run = ["sh", "-c", "cd artifacts/invesed-ai && pnpm run serve"]
 
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
