@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Bot, User, Loader2, TrendingUp, BookOpen, PieChart } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Sparkles } from 'lucide-react';
+import { useUser } from '../context/UserContext';
 
 interface Message {
   id: string;
@@ -10,63 +11,43 @@ interface Message {
 }
 
 const QUICK_QUESTIONS = [
+  { label: 'Review my portfolio', icon: '📊' },
   { label: 'What is SIP?', icon: '💡' },
-  { label: 'How to diversify?', icon: '📊' },
-  { label: 'What is P/E ratio?', icon: '🔢' },
-  { label: 'Mutual fund vs stocks?', icon: '⚖️' },
+  { label: 'How to diversify?', icon: '🌐' },
+  { label: 'Explain P/E ratio', icon: '🔢' },
 ];
-
-const BOT_RESPONSES: Record<string, string> = {
-  sip: "**SIP (Systematic Investment Plan)** is a method of investing a fixed amount in mutual funds at regular intervals (monthly/weekly). It helps you:\n• Build wealth gradually with small amounts\n• Benefit from Rupee Cost Averaging — you buy more units when prices are low\n• Avoid the risk of timing the market\n\nFor example, investing ₹1,000/month in a Nifty 50 Index Fund over 10 years can grow significantly thanks to compounding! 📈",
-  diversify: "**Diversification** means spreading your investments across different sectors and asset types to reduce risk.\n\n**Golden Rule:** Don't put all your eggs in one basket! 🥚\n\n**How to diversify:**\n• Mix stocks from different sectors (IT, Banking, FMCG)\n• Add both large-cap and mid-cap stocks\n• Include debt instruments or index funds\n• Consider gold or REITs for further balance\n\nIn your portfolio, aim for no single stock to be >20% of your total value.",
-  pe: "**P/E Ratio (Price-to-Earnings)** tells you how much investors pay per rupee of a company's earnings.\n\n`P/E = Stock Price ÷ Earnings Per Share`\n\n**What it means:**\n• **Low P/E (< 15):** May be undervalued — could be a bargain!\n• **High P/E (> 35):** Investors expect strong future growth\n• **Industry comparison is key** — compare within the same sector\n\nFor example, TCS has a P/E of ~31, which is typical for quality IT companies. Always compare with sector peers! 🔍",
-  mutual: "**Mutual Funds vs Stocks:**\n\n| Feature | Stocks | Mutual Funds |\n|---|---|---|\n| Risk | Higher | Lower (diversified) |\n| Control | Full | Fund manager |\n| Min. Investment | 1 share | ₹100 via SIP |\n| Expertise needed | High | Low |\n\n**For beginners:** Start with index funds like Nifty 50 — they track the market at very low cost!\n\n**For growth:** As you learn, gradually add quality stocks to boost returns above the index. Your Academy modules cover this in detail! 📚",
-  hello: "Hi! 👋 I'm your **InvesEd AI Coach**! I'm here to help you learn about investing in the Indian market.\n\nYou can ask me about:\n• **Stocks & Mutual Funds** — how to analyse them\n• **Concepts** — P/E, SIP, CAGR, diversification\n• **Your Portfolio** — tips on allocation and risk\n• **Market situations** — what to do during crashes or rallies\n\nWhat would you like to learn today? 🚀",
-  risk: "**Risk in investing** is the possibility of losing some or all of your investment. Here's how to think about it:\n\n**Types of Risk:**\n• **Market Risk** — entire market falls (like COVID crash 2020)\n• **Company Risk** — a specific company performs badly\n• **Concentration Risk** — too much money in one stock\n\n**Your Risk Profile helps!** Based on your quiz answers, you got a personalised risk score. If you're risk-averse, lean towards:\n• Large-cap stocks (HDFC, TCS, RELIANCE)\n• Index funds (Nifty 50)\n• Debt mutual funds\n\nHigher risk tolerance? Small/mid-cap stocks can give higher returns over time! ⚡",
-  default: "That's a great question! 🤔 As your AI investing coach, let me share what I know...\n\nFor in-depth questions about the Indian stock market, I'd recommend:\n• Exploring the **Research Lab** to analyse specific stocks\n• Taking an **Academy module** to build foundational knowledge\n• Trying **Situation Rounds** to practice real market scenarios\n\nCould you rephrase or ask something more specific? For example:\n• \"What is CAGR?\"\n• \"How do I analyse a bank stock?\"\n• \"What happened during the 2020 COVID crash?\"\n\nI'm here to help! 😊",
-};
-
-function getBotResponse(input: string): string {
-  const q = input.toLowerCase();
-  if (q.includes('sip') || q.includes('systematic')) return BOT_RESPONSES.sip;
-  if (q.includes('diversif') || q.includes('spread') || q.includes('basket')) return BOT_RESPONSES.diversify;
-  if (q.includes('p/e') || q.includes('pe ratio') || q.includes('price to earn') || q.includes('valuat')) return BOT_RESPONSES.pe;
-  if (q.includes('mutual') || q.includes('fund') || q.includes('stock')) return BOT_RESPONSES.mutual;
-  if (q.includes('risk') || q.includes('safe') || q.includes('volatile')) return BOT_RESPONSES.risk;
-  if (q.includes('hello') || q.includes('hi') || q.includes('hey') || q.includes('help')) return BOT_RESPONSES.hello;
-  return BOT_RESPONSES.default;
-}
 
 function FormattedMessage({ text }: { text: string }) {
   const lines = text.split('\n');
   return (
-    <div className="text-sm leading-relaxed space-y-1">
+    <div className="text-sm leading-relaxed space-y-0.5">
       {lines.map((line, i) => {
-        if (line.startsWith('**') && line.endsWith('**')) {
-          return <div key={i} className="font-bold">{line.slice(2, -2)}</div>;
-        }
-        if (line.startsWith('• ')) {
-          return <div key={i} className="flex gap-1.5"><span className="text-accent mt-0.5">•</span><span>{line.slice(2)}</span></div>;
-        }
-        if (line.startsWith('|')) {
-          return null;
-        }
-        if (line.includes('**')) {
-          const parts = line.split(/(\*\*[^*]+\*\*)/g);
+        if (line.startsWith('• ') || line.startsWith('- ')) {
+          const content = line.slice(2);
           return (
-            <div key={i}>
-              {parts.map((part, j) =>
-                part.startsWith('**') && part.endsWith('**')
-                  ? <strong key={j}>{part.slice(2, -2)}</strong>
-                  : <span key={j}>{part}</span>
-              )}
+            <div key={i} className="flex gap-1.5">
+              <span className="text-primary mt-0.5 flex-shrink-0">•</span>
+              <span>{renderInlineBold(content)}</span>
             </div>
           );
         }
         if (line.trim() === '') return <div key={i} className="h-1" />;
-        return <div key={i}>{line}</div>;
+        return <div key={i}>{renderInlineBold(line)}</div>;
       })}
     </div>
+  );
+}
+
+function renderInlineBold(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <>
+      {parts.map((part, j) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <strong key={j}>{part.slice(2, -2)}</strong>
+          : <span key={j}>{part}</span>
+      )}
+    </>
   );
 }
 
@@ -76,14 +57,17 @@ export default function ChatBot() {
     {
       id: '0',
       role: 'bot',
-      text: "Hi! 👋 I'm your **InvesEd AI Coach**! Ask me anything about investing, stocks, mutual funds, or the Indian market.\n\nTry one of the quick questions below to get started! 🚀",
+      text: "Hi! 👋 I'm your **InvesEd AI Coach** — powered by real AI!\n\nI know your portfolio, watchlist, and learning progress. Ask me anything about investing, or use the quick buttons below. 🚀",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const { userProfile, portfolioState, completedModules } = useUser();
 
   useEffect(() => {
     if (isOpen) {
@@ -92,22 +76,140 @@ export default function ChatBot() {
     }
   }, [isOpen, messages]);
 
-  function sendMessage(text: string) {
-    if (!text.trim()) return;
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', text: text.trim(), timestamp: new Date() };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-    setIsTyping(true);
-    setTimeout(() => {
-      const botMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'bot',
-        text: getBotResponse(text),
-        timestamp: new Date(),
+  const buildUserContext = useCallback(() => {
+    if (!userProfile) return undefined;
+
+    const holdings = portfolioState.holdings.map(h => {
+      const currentValue = h.quantity * h.currentPrice;
+      const investedValue = h.quantity * h.avgBuyPrice;
+      const percentReturn = ((h.currentPrice - h.avgBuyPrice) / h.avgBuyPrice) * 100;
+      return {
+        ticker: h.ticker,
+        type: h.type === 'stock' ? 'stock' : 'mutualfund',
+        percentReturn,
+        currentValue,
+        sector: h.sector,
       };
-      setMessages(prev => [...prev, botMsg]);
-      setIsTyping(false);
-    }, 900 + Math.random() * 600);
+    });
+
+    const portfolioValue = portfolioState.holdings.reduce(
+      (sum, h) => sum + h.quantity * h.currentPrice, 0
+    ) + portfolioState.cash;
+
+    const totalInvested = portfolioState.holdings.reduce(
+      (sum, h) => sum + h.quantity * h.avgBuyPrice, 0
+    );
+    const holdingsValue = portfolioState.holdings.reduce(
+      (sum, h) => sum + h.quantity * h.currentPrice, 0
+    );
+    const totalReturn = totalInvested > 0 ? ((holdingsValue - totalInvested) / totalInvested) * 100 : 0;
+
+    return {
+      riskProfile: userProfile.riskProfile ? {
+        type: userProfile.riskProfile.type,
+        label: userProfile.riskProfile.label,
+        score: userProfile.riskProfile.score,
+      } : undefined,
+      holdings,
+      watchlist: userProfile.watchlist,
+      completedModules,
+      totalReturn,
+      portfolioValue,
+      xp: userProfile.xp,
+      level: userProfile.level,
+    };
+  }, [userProfile, portfolioState, completedModules]);
+
+  const buildChatHistory = useCallback((currentMessages: Message[]) => {
+    return currentMessages
+      .filter(m => m.id !== '0')
+      .map(m => ({ role: m.role === 'user' ? 'user' as const : 'assistant' as const, content: m.text }));
+  }, []);
+
+  async function sendMessage(text: string) {
+    if (!text.trim() || isStreaming) return;
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      text: text.trim(),
+      timestamp: new Date(),
+    };
+
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
+    setInput('');
+    setIsStreaming(true);
+
+    const botMsgId = (Date.now() + 1).toString();
+    const botMsg: Message = { id: botMsgId, role: 'bot', text: '', timestamp: new Date() };
+    setMessages(prev => [...prev, botMsg]);
+
+    abortRef.current = new AbortController();
+
+    try {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: buildChatHistory(updatedMessages),
+          userContext: buildUserContext(),
+        }),
+        signal: abortRef.current.signal,
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error('Failed to connect to AI');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const parsed = JSON.parse(line.slice(6));
+            if (parsed.content) {
+              accumulated += parsed.content;
+              setMessages(prev =>
+                prev.map(m => m.id === botMsgId ? { ...m, text: accumulated } : m)
+              );
+            }
+            if (parsed.done || parsed.error) break;
+          } catch {
+            // skip malformed SSE lines
+          }
+        }
+      }
+
+      if (!accumulated) {
+        setMessages(prev =>
+          prev.map(m => m.id === botMsgId
+            ? { ...m, text: "I couldn't connect to the AI right now. Please try again!" }
+            : m
+          )
+        );
+      }
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        setMessages(prev =>
+          prev.map(m => m.id === botMsgId
+            ? { ...m, text: "Something went wrong. Make sure the API server is running and try again." }
+            : m
+          )
+        );
+      }
+    } finally {
+      setIsStreaming(false);
+    }
   }
 
   return (
@@ -119,19 +221,23 @@ export default function ChatBot() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 20 }}
             transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-            className="fixed bottom-24 right-4 z-50 w-[340px] sm:w-[380px] bg-white rounded-2xl shadow-2xl border border-border flex flex-col overflow-hidden"
-            style={{ maxHeight: 'calc(100vh - 120px)', height: 520 }}
+            className="fixed bottom-24 right-4 z-50 w-[340px] sm:w-[390px] bg-white rounded-2xl shadow-2xl border border-border flex flex-col overflow-hidden"
+            style={{ maxHeight: 'calc(100vh - 120px)', height: 540 }}
           >
+            {/* Header */}
             <div className="brand-gradient p-4 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
                   <Bot className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <div className="text-white font-bold text-sm">InvesEd AI Coach</div>
+                  <div className="text-white font-bold text-sm flex items-center gap-1.5">
+                    InvesEd AI Coach
+                    <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                  </div>
                   <div className="text-white/70 text-xs flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-green-400 rounded-full inline-block" />
-                    Always available
+                    AI-powered · knows your portfolio
                   </div>
                 </div>
               </div>
@@ -140,6 +246,7 @@ export default function ChatBot() {
               </button>
             </div>
 
+            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50/50">
               {messages.map((msg) => (
                 <motion.div
@@ -152,34 +259,27 @@ export default function ChatBot() {
                     {msg.role === 'bot' ? <Bot className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
                   </div>
                   <div className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl ${msg.role === 'bot' ? 'bg-white border border-border text-foreground rounded-tl-sm' : 'bg-primary text-white rounded-tr-sm'}`}>
-                    {msg.role === 'bot' ? <FormattedMessage text={msg.text} /> : <p className="text-sm">{msg.text}</p>}
+                    {msg.role === 'bot'
+                      ? msg.text
+                        ? <FormattedMessage text={msg.text} />
+                        : <TypingDots />
+                      : <p className="text-sm">{msg.text}</p>
+                    }
                   </div>
                 </motion.div>
               ))}
-              {isTyping && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2.5">
-                  <div className="w-7 h-7 rounded-full brand-gradient flex items-center justify-center">
-                    <Bot className="w-3.5 h-3.5 text-white" />
-                  </div>
-                  <div className="bg-white border border-border px-4 py-3 rounded-2xl rounded-tl-sm">
-                    <div className="flex gap-1 items-center">
-                      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Input area */}
             <div className="p-3 border-t border-border bg-white flex-shrink-0">
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {QUICK_QUESTIONS.map((q) => (
                   <button
                     key={q.label}
                     onClick={() => sendMessage(q.label)}
-                    className="text-xs px-2.5 py-1 rounded-full bg-primary/5 text-primary border border-primary/20 hover:bg-primary/10 transition-colors font-medium"
+                    disabled={isStreaming}
+                    className="text-xs px-2.5 py-1 rounded-full bg-primary/5 text-primary border border-primary/20 hover:bg-primary/10 transition-colors font-medium disabled:opacity-40"
                   >
                     {q.icon} {q.label}
                   </button>
@@ -192,14 +292,15 @@ export default function ChatBot() {
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
                   placeholder="Ask anything about investing..."
-                  className="flex-1 text-sm border border-border rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all bg-gray-50"
+                  disabled={isStreaming}
+                  className="flex-1 text-sm border border-border rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all bg-gray-50 disabled:opacity-60"
                 />
                 <button
-                  onClick={() => sendMessage(input)}
-                  disabled={!input.trim() || isTyping}
-                  className="w-9 h-9 brand-gradient rounded-xl flex items-center justify-center text-white disabled:opacity-40 transition-opacity flex-shrink-0"
+                  onClick={() => isStreaming ? abortRef.current?.abort() : sendMessage(input)}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center text-white flex-shrink-0 transition-all ${isStreaming ? 'bg-red-500 hover:bg-red-600' : 'brand-gradient disabled:opacity-40'}`}
+                  disabled={!isStreaming && !input.trim()}
                 >
-                  <Send className="w-4 h-4" />
+                  {isStreaming ? <X className="w-4 h-4" /> : <Send className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -228,5 +329,15 @@ export default function ChatBot() {
         <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
       </motion.button>
     </>
+  );
+}
+
+function TypingDots() {
+  return (
+    <div className="flex gap-1 items-center py-0.5">
+      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+    </div>
   );
 }
