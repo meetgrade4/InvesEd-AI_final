@@ -382,6 +382,48 @@ export interface AdvancedVehicle {
   lockInPeriod?: string;
 }
 
+export interface PMSData {
+  id: string;
+  name: string;
+  provider: string;
+  strategy: 'growth' | 'value' | 'momentum' | 'multi_cap' | 'sectoral' | 'quant';
+  strategyLabel: string;
+  minimumInvestment: number;
+  managementFee: number;
+  performanceFee: number;
+  aum: number;
+  returns: {
+    oneYear: number;
+    threeYear: number;
+    fiveYear: number;
+    sinceInception: number;
+  };
+  riskRating: 'Moderate' | 'Moderately High' | 'High' | 'Very High';
+  topHoldings: { name: string; percent: number }[];
+  benchmarkIndex: string;
+  inceptionDate: string;
+  aiSummary: string;
+}
+
+export interface BankSchemeData {
+  id: string;
+  bankName: string;
+  schemeName: string;
+  type: 'fd' | 'rd' | 'savings' | 'tax_saver_fd';
+  typeLabel: string;
+  interestRate: number;
+  tenure: string;
+  tenureMonths: number;
+  minDeposit: number;
+  compoundingFrequency: 'monthly' | 'quarterly' | 'annually';
+  seniorCitizenBenefit: number;
+  isInsured: boolean;
+  insuranceCover: number;
+  specialFeatures: string[];
+  ratingAgency: string;
+  creditRating: string;
+}
+
 export interface Certificate {
   id: string;
   type: 'foundations' | 'expert';

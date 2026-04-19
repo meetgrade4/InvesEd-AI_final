@@ -6,6 +6,7 @@ import { ArrowLeft, TrendingUp, TrendingDown, Star, Plus } from 'lucide-react';
 import { getStockByTicker } from '../../data/marketData';
 import { formatINR, formatPercent } from '../../utils/formatters';
 import InvestModal from '../../components/InvestModal';
+import { useUser } from '../../context/UserContext';
 
 const TABS = ['Overview', 'Fundamentals', 'Risk Profile', 'Analyst View', 'News'];
 
@@ -14,8 +15,10 @@ export default function StockDetail() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [chartPeriod, setChartPeriod] = useState('6M');
   const [investModalOpen, setInvestModalOpen] = useState(false);
+  const { userProfile, addToWatchlist, removeFromWatchlist } = useUser();
 
   const stock = ticker ? getStockByTicker(ticker) : null;
+  const isStarred = ticker ? (userProfile?.watchlist ?? []).includes(ticker) : false;
 
   if (!stock) {
     return (
@@ -75,8 +78,16 @@ export default function StockDetail() {
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">
-            <button className="w-9 h-9 flex items-center justify-center rounded-xl border border-border hover:bg-muted transition-colors">
-              <Star className="w-4 h-4 text-muted-foreground" />
+            <button
+              onClick={() => ticker && (isStarred ? removeFromWatchlist(ticker) : addToWatchlist(ticker))}
+              className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-colors ${
+                isStarred
+                  ? 'border-amber-400 bg-amber-50 hover:bg-amber-100'
+                  : 'border-border hover:bg-muted'
+              }`}
+              title={isStarred ? 'Remove from watchlist' : 'Add to watchlist'}
+            >
+              <Star className={`w-4 h-4 transition-colors ${isStarred ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground'}`} />
             </button>
             <button
               onClick={() => setInvestModalOpen(true)}
