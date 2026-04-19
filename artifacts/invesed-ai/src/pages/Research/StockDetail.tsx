@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'wouter';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar } from 'recharts';
@@ -15,10 +15,16 @@ export default function StockDetail() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [chartPeriod, setChartPeriod] = useState('6M');
   const [investModalOpen, setInvestModalOpen] = useState(false);
-  const { userProfile, addToWatchlist, removeFromWatchlist } = useUser();
+  const { userProfile, addToWatchlist, removeFromWatchlist, logResearchView } = useUser();
 
   const stock = ticker ? getStockByTicker(ticker) : null;
   const isStarred = ticker ? (userProfile?.watchlist ?? []).includes(ticker) : false;
+
+  useEffect(() => {
+    if (stock && ticker) {
+      logResearchView(ticker, stock.name, 'stock');
+    }
+  }, [ticker, stock?.name]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!stock) {
     return (

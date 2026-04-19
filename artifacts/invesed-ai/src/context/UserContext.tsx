@@ -52,6 +52,21 @@ export interface UserProfile {
   watchlist: string[];
 }
 
+export interface ResearchView {
+  ticker: string;
+  name: string;
+  type: 'stock' | 'fund';
+  viewCount: number;
+  lastViewedAt: number;
+}
+
+export interface ActivityEntry {
+  icon: string;
+  text: string;
+  time: number;
+  category: 'research' | 'trade' | 'academy' | 'system';
+}
+
 const DEFAULT_PROFILE: UserProfile = {
   username: 'student',
   displayName: 'Student',
@@ -95,6 +110,9 @@ interface UserContextType {
     sector?: string
   ) => boolean;
   sellInvestment: (ticker: string, quantity: number, price: number) => boolean;
+  researchHistory: ResearchView[];
+  logResearchView: (ticker: string, name: string, type: 'stock' | 'fund') => void;
+  activityLog: ActivityEntry[];
 }
 
 const UserContext = createContext<UserContextType | null>(null);
@@ -105,6 +123,22 @@ export function useUser() {
   return ctx;
 }
 
+const now = Date.now();
+const INITIAL_RESEARCH_HISTORY: ResearchView[] = [
+  { ticker: 'HDFCBANK', name: 'HDFC Bank', type: 'stock', viewCount: 3, lastViewedAt: now - 1 * 24 * 60 * 60 * 1000 },
+  { ticker: 'INFY', name: 'Infosys', type: 'stock', viewCount: 2, lastViewedAt: now - 2 * 24 * 60 * 60 * 1000 },
+  { ticker: 'TCS', name: 'TCS', type: 'stock', viewCount: 2, lastViewedAt: now - 2 * 60 * 60 * 1000 },
+  { ticker: 'ZOMATO', name: 'Zomato', type: 'stock', viewCount: 3, lastViewedAt: now - 3 * 24 * 60 * 60 * 1000 },
+];
+
+const INITIAL_ACTIVITY: ActivityEntry[] = [
+  { icon: '🔍', text: 'Researched TCS — P/E and analyst ratings', time: now - 2 * 60 * 60 * 1000, category: 'research' },
+  { icon: '💰', text: 'Bought HDFCBANK × 12 shares (starting portfolio)', time: now - 1 * 24 * 60 * 60 * 1000, category: 'trade' },
+  { icon: '🔍', text: 'Viewed ZOMATO research page 3 times', time: now - 3 * 24 * 60 * 60 * 1000, category: 'research' },
+  { icon: '💰', text: 'Bought PPFAS Flexi Cap × 250 units (starting portfolio)', time: now - 4 * 24 * 60 * 60 * 1000, category: 'trade' },
+  { icon: '💰', text: 'Bought SBI Nifty 50 Index Fund × 180 units (starting portfolio)', time: now - 4 * 24 * 60 * 60 * 1000, category: 'trade' },
+];
+
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfileState] = useState<UserProfile | null>(DEFAULT_PROFILE);
   const [completedModules, setCompletedModules] = useState<string[]>([]);
@@ -113,6 +147,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     cash: 100000,
     holdings: INITIAL_HOLDINGS,
   });
+  const [researchHistory, setResearchHistory] = useState<ResearchView[]>(INITIAL_RESEARCH_HISTORY);
+  const [activityLog, setActivityLog] = useState<ActivityEntry[]>(INITIAL_ACTIVITY);
 
   const firstBuyDone = useRef(false);
   const firstRoundDone = useRef(false);
@@ -198,6 +234,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const markLessonComplete = useCallback((lessonId: string, moduleId: string, lessonXp: number) => {
     addXP(lessonXp);
+    setActivityLog(prev => [
+      { icon: '📚', text: `Completed lesson ${lessonId} (+${lessonXp} XP)`, time: Date.now(), category: 'academy' as const },
+      ...prev,
+    ].slice(0, 30));
     setCompletedLessons(prev => {
       if (prev.includes(lessonId)) return prev;
       if (prev.length === 0) {
@@ -226,7 +266,32 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       firstRoundDone.current = true;
       awardBadge('situation_survivor');
     }
+    setActivityLog(prev => [
+      { icon: '⚡', text: 'Completed a Situation Round', time: Date.now(), category: 'academy' },
+      ...prev,
+    ].slice(0, 30));
   }, [awardBadge]);
+
+  const logResearchView = useCallback((ticker: string, name: string, type: 'stock' | 'fund') => {
+    setResearchHistory(prev => {
+      const existing = prev.find(r => r.ticker === ticker);
+      if (existing) {
+        return prev.map(r => r.ticker === ticker
+          ? { ...r, viewCount: r.viewCount + 1, lastViewedAt: Date.now() }
+          : r
+        );
+      }
+      return [{ ticker, name, type, viewCount: 1, lastViewedAt: Date.now() }, ...prev].slice(0, 50);
+    });
+    setActivityLog(prev => {
+      const recentResearch = prev.find(a => a.category === 'research' && a.text.includes(ticker) && Date.now() - a.time < 5 * 60 * 1000);
+      if (recentResearch) return prev;
+      return [
+        { icon: '🔍', text: `Researched ${name} (${ticker})`, time: Date.now(), category: 'research' as const },
+        ...prev,
+      ].slice(0, 30);
+    });
+  }, []);
 
   const buyInvestment = useCallback((
     ticker: string,
@@ -258,25 +323,39 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
       return { cash: prev.cash - totalCost, holdings: newHoldings };
     });
-    if (didSucceed && !firstBuyDone.current) {
-      firstBuyDone.current = true;
-      setTimeout(() => awardBadge('portfolio_builder'), 600);
+    if (didSucceed) {
+      setActivityLog(prev => [
+        { icon: '💰', text: `Bought ${name} (${ticker}) × ${quantity} @ ₹${price.toLocaleString('en-IN')}`, time: Date.now(), category: 'trade' as const },
+        ...prev,
+      ].slice(0, 30));
+      if (!firstBuyDone.current) {
+        firstBuyDone.current = true;
+        setTimeout(() => awardBadge('portfolio_builder'), 600);
+      }
     }
     return didSucceed;
   }, [awardBadge]);
 
   const sellInvestment = useCallback((ticker: string, quantity: number, price: number): boolean => {
     let didSucceed = false;
+    let soldName = ticker;
     setPortfolioState(prev => {
       const idx = prev.holdings.findIndex(h => h.ticker === ticker);
       if (idx < 0 || prev.holdings[idx].quantity < quantity) return prev;
       didSucceed = true;
+      soldName = prev.holdings[idx].name;
       const proceeds = quantity * price;
       const newHoldings = prev.holdings[idx].quantity === quantity
         ? prev.holdings.filter((_, i) => i !== idx)
         : prev.holdings.map((h, i) => i === idx ? { ...h, quantity: h.quantity - quantity } : h);
       return { cash: prev.cash + proceeds, holdings: newHoldings };
     });
+    if (didSucceed) {
+      setActivityLog(prev => [
+        { icon: '💸', text: `Sold ${soldName} (${ticker}) × ${quantity} @ ₹${price.toLocaleString('en-IN')}`, time: Date.now(), category: 'trade' as const },
+        ...prev,
+      ].slice(0, 30));
+    }
     return didSucceed;
   }, []);
 
@@ -297,6 +376,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       portfolioState,
       buyInvestment,
       sellInvestment,
+      researchHistory,
+      logResearchView,
+      activityLog,
     }}>
       {children}
     </UserContext.Provider>
